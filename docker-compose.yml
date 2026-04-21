@@ -1,0 +1,49 @@
+version: '3.8'
+
+services:
+  postgres:
+    image: postgis/postgis:16-3.4
+    container_name: comfort-travel-db
+    environment:
+      POSTGRES_DB: comfort_travel
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+    ports:
+      - "5433:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d comfort_travel"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  server:
+    build:
+      context: ./server
+    container_name: comfort-travel-server
+    environment:
+      DATABASE_URL: postgresql://postgres:postgres@postgres:5432/comfort_travel
+      JWT_SECRET: docker-dev-secret-change-in-prod
+      PORT: "3001"
+      NODE_ENV: production
+      CORS_ORIGINS: "http://localhost,http://localhost:80"
+    ports:
+      - "3001:3001"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    restart: unless-stopped
+
+  client:
+    build:
+      context: ./client
+    container_name: comfort-travel-client
+    ports:
+      - "80:80"
+    depends_on:
+      - server
+    restart: unless-stopped
+
+volumes:
+  pgdata:
