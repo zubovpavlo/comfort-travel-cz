@@ -1,21 +1,8 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import CityAutocomplete from '../components/search/CityAutocomplete';
-import { Place, FuelType, FuelPrices } from '../types';
-import api from '../api/axiosInstance';
-import { ArrowRight, Shuffle, X, Train, Car } from 'lucide-react';
-
-const FUEL_LABELS: Record<FuelType, string> = {
-  benzin: 'Benzín 95',
-  diesel: 'Nafta',
-  lpg: 'LPG',
-};
-
-const FUEL_DEFAULT_CONSUMPTION: Record<FuelType, number> = {
-  benzin: 7.5,
-  diesel: 6.5,
-  lpg: 10.0,
-};
+import { Place } from '../types';
+import { ArrowRight, Shuffle, X } from 'lucide-react';
 
 interface DestTag {
   id: string;
@@ -94,33 +81,6 @@ export default function SearchPage() {
   const [anywhereMode, setAnywhereMode] = useState(false);
   const [activeTag, setActiveTag] = useState<string | null>(null);
 
-  // Transport mode: transit (public) vs car
-  const [transportMode, setTransportMode] = useState<'transit' | 'car'>('transit');
-  const [fuelType, setFuelType] = useState<FuelType>('benzin');
-  const [consumption, setConsumption] = useState<number>(FUEL_DEFAULT_CONSUMPTION.benzin);
-  const [fuelPrice, setFuelPrice] = useState<string>('');
-  const [fuelSource, setFuelSource] = useState<string>('');
-
-  // Fetch live fuel prices when user switches fuel type (or opens car mode)
-  useEffect(() => {
-    if (transportMode !== 'car') return;
-    let cancelled = false;
-    api.get<FuelPrices>('/fuel/price').then(r => {
-      if (cancelled) return;
-      setFuelPrice(r.data[fuelType].toFixed(2));
-      setFuelSource(`${r.data.source} · ${r.data.updated}`);
-    }).catch(() => {
-      if (!cancelled) setFuelSource('Ceny paliv nelze načíst — zadejte ručně');
-    });
-    return () => { cancelled = true; };
-  }, [transportMode, fuelType]);
-
-  const handleFuelTypeChange = (t: FuelType) => {
-    setFuelType(t);
-    setConsumption(FUEL_DEFAULT_CONSUMPTION[t]);
-    setFuelPrice('');
-  };
-
   const handleSearch = () => {
     if (!origin || !dest || !date || !returnDate) return;
     const params = new URLSearchParams({
@@ -133,12 +93,6 @@ export default function SearchPage() {
       date,
       return_date: returnDate,
     });
-    if (transportMode === 'car') {
-      params.set('transport_mode', 'car');
-      params.set('fuel_type', fuelType);
-      params.set('consumption', String(consumption));
-      if (fuelPrice) params.set('fuel_price', fuelPrice);
-    }
     navigate(`/vysledky?${params}`);
   };
 
@@ -244,89 +198,6 @@ export default function SearchPage() {
               onChange={(e) => setReturnDate(e.target.value)}
             />
           </div>
-        </div>
-
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-2">Jak cestujete?</label>
-          <div className="grid grid-cols-2 gap-3">
-            <button
-              type="button"
-              onClick={() => setTransportMode('transit')}
-              className={`flex items-center justify-center gap-2 px-4 py-3 rounded-lg border-2 font-medium transition-colors ${
-                transportMode === 'transit'
-                  ? 'border-blue-600 bg-blue-50 text-blue-700'
-                  : 'border-gray-200 bg-white text-gray-600 hover:border-gray-300'
-              }`}
-            >
-              <Train size={18} /> Veřejná doprava
-            </button>
-            <button
-              type="button"
-              onClick={() => setTransportMode('car')}
-              className={`flex items-center justify-center gap-2 px-4 py-3 rounded-lg border-2 font-medium transition-colors ${
-                transportMode === 'car'
-                  ? 'border-green-600 bg-green-50 text-green-700'
-                  : 'border-gray-200 bg-white text-gray-600 hover:border-gray-300'
-              }`}
-            >
-              <Car size={18} /> Autem
-            </button>
-          </div>
-
-          {transportMode === 'car' && (
-            <div className="mt-4 p-4 bg-green-50 border border-green-200 rounded-lg space-y-3">
-              <div>
-                <label className="block text-xs font-medium text-gray-700 mb-1">Druh paliva</label>
-                <div className="flex gap-2">
-                  {(['benzin', 'diesel', 'lpg'] as FuelType[]).map(t => (
-                    <button
-                      key={t}
-                      type="button"
-                      onClick={() => handleFuelTypeChange(t)}
-                      className={`px-3 py-1.5 text-sm rounded-lg border font-medium ${
-                        fuelType === t
-                          ? 'border-green-600 bg-white text-green-700'
-                          : 'border-gray-300 bg-white text-gray-600 hover:border-gray-400'
-                      }`}
-                    >
-                      {FUEL_LABELS[t]}
-                    </button>
-                  ))}
-                </div>
-              </div>
-
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="block text-xs font-medium text-gray-700 mb-1">Spotřeba (l/100km)</label>
-                  <input
-                    type="number"
-                    step="0.1"
-                    min="1"
-                    max="25"
-                    value={consumption}
-                    onChange={(e) => setConsumption(parseFloat(e.target.value) || 0)}
-                    className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500"
-                  />
-                </div>
-                <div>
-                  <label className="block text-xs font-medium text-gray-700 mb-1">Cena paliva (Kč/l)</label>
-                  <input
-                    type="number"
-                    step="0.01"
-                    min="1"
-                    placeholder="Načítám..."
-                    value={fuelPrice}
-                    onChange={(e) => setFuelPrice(e.target.value)}
-                    className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500"
-                  />
-                </div>
-              </div>
-
-              {fuelSource && (
-                <div className="text-xs text-gray-500">⛽ {fuelSource}</div>
-              )}
-            </div>
-          )}
         </div>
 
         <button
