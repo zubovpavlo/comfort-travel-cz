@@ -1,5 +1,6 @@
 import { findOptimalRoutes } from './routeFinder';
 import { accommodationService } from './accommodationService';
+import { carRouteService } from './carRouteService';
 import { RecommendationRequest, RecommendationWeights, Route, ScoredCombo, Accommodation } from '../types';
 import { calculateComfortScore, minMaxNormalize } from '../utils/scoring';
 
@@ -32,31 +33,45 @@ export const recommendationService = {
 
     if (!request.origin || !request.destination) return [];
 
-    // Step 1: Find routes (outbound + return) via Transitous
-    const [outboundRoutes, returnRoutes] = await Promise.all([
-      findOptimalRoutes({
-        origin: request.origin,
-        destination: request.destination,
-        date: request.travel_date,
-        transportTypes: filters.transport_types,
-        maxTransfers: filters.max_transfers,
-      }),
-      findOptimalRoutes({
-        origin: request.destination,
-        destination: request.origin,
-        date: request.return_date,
-        transportTypes: filters.transport_types,
-        maxTransfers: filters.max_transfers,
-      }),
-    ]);
+    // Step 1: Find outbound + return routes. Either via Transitous (transit) or OSRM (car).
+    let filteredOut: Route[];
+    let filteredRet: Route[];
 
-    // Apply max_transfers filter (belt-and-suspenders: MOTIS may not enforce it)
-    const mt = filters.max_transfers;
-    const filteredOut = mt !== undefined ? outboundRoutes.filter(r => r.transfers <= mt) : outboundRoutes;
-    const filteredRet = mt !== undefined ? returnRoutes.filter(r => r.transfers <= mt)   : returnRoutes;
+    if (request.transport_mode === 'car') {
+      if (!request.car_options) return [];
+      const [out, ret] = await Promise.all([
+        carRouteService.getRoute(request.origin, request.destination, request.car_options),
+        carRouteService.getRoute(request.destination, request.origin, request.car_options),
+      ]);
+      if (!out || !ret) return [];
+      filteredOut = [out];
+      filteredRet = [ret];
+    } else {
+      const [outboundRoutes, returnRoutes] = await Promise.all([
+        findOptimalRoutes({
+          origin: request.origin,
+          destination: request.destination,
+          date: request.travel_date,
+          transportTypes: filters.transport_types,
+          maxTransfers: filters.max_transfers,
+        }),
+        findOptimalRoutes({
+          origin: request.destination,
+          destination: request.origin,
+          date: request.return_date,
+          transportTypes: filters.transport_types,
+          maxTransfers: filters.max_transfers,
+        }),
+      ]);
 
-    if (filteredOut.length === 0 || filteredRet.length === 0) {
-      return [];
+      // Apply max_transfers filter (belt-and-suspenders: MOTIS may not enforce it)
+      const mt = filters.max_transfers;
+      filteredOut = mt !== undefined ? outboundRoutes.filter(r => r.transfers <= mt) : outboundRoutes;
+      filteredRet = mt !== undefined ? returnRoutes.filter(r => r.transfers <= mt)   : returnRoutes;
+
+      if (filteredOut.length === 0 || filteredRet.length === 0) {
+        return [];
+      }
     }
 
     // Step 2: Find accommodations near the destination via Overpass

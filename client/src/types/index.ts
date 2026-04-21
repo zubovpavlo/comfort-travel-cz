@@ -18,7 +18,23 @@ export interface User {
   pref_rating: number;
 }
 
-export type TransportType = 'train' | 'bus' | 'tram' | 'metro' | 'walk';
+export type TransportType = 'train' | 'bus' | 'tram' | 'metro' | 'walk' | 'car';
+
+export type FuelType = 'benzin' | 'diesel' | 'lpg';
+
+export interface CarOptions {
+  fuel_type: FuelType;
+  consumption_l_per_100km: number;
+  fuel_price_czk_per_l?: number;
+}
+
+export interface FuelPrices {
+  benzin: number;
+  diesel: number;
+  lpg: number;
+  source: string;
+  updated: string;
+}
 
 export interface Accommodation {
   id: string;
@@ -105,6 +121,8 @@ export interface SearchParams {
     radius_m?: number;
     amenities?: string[];
   };
+  transport_mode?: 'transit' | 'car';
+  car_options?: CarOptions;
 }
 
 export interface FavoriteCombo {

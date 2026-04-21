@@ -48,6 +48,7 @@ const transportLabels: Record<TransportType, string> = {
   tram: 'Tramvaj',
   metro: 'Metro',
   walk: 'Pěšky',
+  car: 'Auto',
 };
 
 function IconForType({ type }: { type: TransportType }) {

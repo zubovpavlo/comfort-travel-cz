@@ -21,7 +21,15 @@ export interface User {
   updated_at: Date;
 }
 
-export type TransportType = 'train' | 'bus' | 'tram' | 'metro' | 'walk';
+export type TransportType = 'train' | 'bus' | 'tram' | 'metro' | 'walk' | 'car';
+
+export type FuelType = 'benzin' | 'diesel' | 'lpg';
+
+export interface CarOptions {
+  fuel_type: FuelType;
+  consumption_l_per_100km: number;
+  fuel_price_czk_per_l?: number;
+}
 
 export interface TransportConnectionCache {
   id: number;
@@ -138,6 +146,8 @@ export interface RecommendationRequest {
   passengers: number;
   weights?: RecommendationWeights;
   filters?: SearchFilters;
+  transport_mode?: 'transit' | 'car';
+  car_options?: CarOptions;
 }
 
 export interface ScoredCombo {

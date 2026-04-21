@@ -1,7 +1,7 @@
 import { ScoredCombo } from '../../types';
 import { formatPrice, formatDuration, formatTime } from '../../utils/formatters';
 import ScoreBreakdown from './ScoreBreakdown';
-import { Train, Bus, Hotel, Heart, ChevronRight, TramFront, Footprints } from 'lucide-react';
+import { Train, Bus, Hotel, Heart, ChevronRight, TramFront, Footprints, Car } from 'lucide-react';
 import { TransportType } from '../../types';
 
 interface Props {
@@ -20,6 +20,8 @@ function iconForTransport(type: TransportType) {
       return <TramFront size={16} />;
     case 'walk':
       return <Footprints size={16} />;
+    case 'car':
+      return <Car size={16} />;
     case 'bus':
     default:
       return <Bus size={16} />;
@@ -30,17 +32,24 @@ function RouteDisplay({ route, label }: { route: ScoredCombo['outbound_route']; 
   const first = route.segments[0];
   const last = route.segments[route.segments.length - 1];
   const icon = iconForTransport(first.transportType);
+  const isCar = first.transportType === 'car';
 
   return (
     <div className="flex items-center gap-3 text-sm">
       <span className="text-gray-400 w-12">{label}</span>
       <span className="text-blue-600">{icon}</span>
-      <span className="font-medium">{formatTime(first.departureTime)}</span>
-      <span className="text-gray-400">→</span>
-      <span className="font-medium">{formatTime(last.arrivalTime)}</span>
+      {isCar ? (
+        <span className="font-medium">{first.originStopName} → {last.destStopName}</span>
+      ) : (
+        <>
+          <span className="font-medium">{formatTime(first.departureTime)}</span>
+          <span className="text-gray-400">→</span>
+          <span className="font-medium">{formatTime(last.arrivalTime)}</span>
+        </>
+      )}
       <span className="text-gray-500">
         {formatDuration(route.totalDurationMinutes)}
-        {route.transfers > 0 && ` · ${route.transfers} přestup${route.transfers > 1 ? 'y' : ''}`}
+        {!isCar && route.transfers > 0 && ` · ${route.transfers} přestup${route.transfers > 1 ? 'y' : ''}`}
       </span>
       <span className="ml-auto font-medium text-gray-700">{formatPrice(route.totalPriceCzk)}</span>
     </div>

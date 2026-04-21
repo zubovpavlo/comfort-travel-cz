@@ -39,6 +39,7 @@ const COLORS: Record<TransportType, string> = {
   tram:  '#dc2626',
   metro: '#9333ea',
   walk:  '#9ca3af',
+  car:   '#059669',
 };
 
 const TRANSPORT_LABEL: Record<TransportType, string> = {
@@ -47,6 +48,7 @@ const TRANSPORT_LABEL: Record<TransportType, string> = {
   tram:  '🚋 Tramvaj',
   metro: '🚇 Metro',
   walk:  '🚶 Pěšky',
+  car:   '🚗 Auto',
 };
 
 function FitBounds({ points }: { points: [number, number][] }) {

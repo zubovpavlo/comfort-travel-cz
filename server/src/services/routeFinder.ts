@@ -182,6 +182,7 @@ export async function findOptimalRoutes(params: {
       tram: ['TRAM'],
       metro: ['SUBWAY', 'METRO'],
       walk: ['WALK'],
+      car: [], // Car doesn't use MOTIS; handled by carRouteService
     };
     modes = Array.from(new Set(transportTypes.flatMap((t) => mapping[t] || [])));
   }

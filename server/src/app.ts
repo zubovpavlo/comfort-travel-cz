@@ -12,6 +12,7 @@ import recommendationRoutes from './routes/recommendationRoutes';
 import favoriteRoutes from './routes/favoriteRoutes';
 import adminRoutes from './routes/adminRoutes';
 import orderRoutes from './routes/orderRoutes';
+import fuelRoutes from './routes/fuelRoutes';
 
 const app = express();
 
@@ -28,6 +29,7 @@ app.use('/api/recommendations', recommendationRoutes);
 app.use('/api/favorites', favoriteRoutes);
 app.use('/api/admin', adminRoutes);
 app.use('/api/orders', orderRoutes);
+app.use('/api/fuel', fuelRoutes);
 
 app.get('/api/health', (_req, res) => {
   res.json({ status: 'ok' });

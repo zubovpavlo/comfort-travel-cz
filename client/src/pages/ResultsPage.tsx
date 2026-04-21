@@ -2,7 +2,7 @@ import { useState, useEffect, useMemo, useRef } from 'react';
 import { useSearchParams, useNavigate } from 'react-router-dom';
 import { recommendationApi } from '../api/recommendationApi';
 import { favoriteApi } from '../api/favoriteApi';
-import { ScoredCombo, RecommendationWeights, Place } from '../types';
+import { ScoredCombo, RecommendationWeights, Place, FuelType, CarOptions } from '../types';
 import ComboCard from '../components/results/ComboCard';
 import PreferenceSliders from '../components/search/PreferenceSliders';
 import LoadingSpinner from '../components/common/LoadingSpinner';
@@ -49,6 +49,22 @@ export default function ResultsPage() {
 
   const date = searchParams.get('date') || '';
   const returnDate = searchParams.get('return_date') || '';
+
+  const transportMode: 'transit' | 'car' =
+    searchParams.get('transport_mode') === 'car' ? 'car' : 'transit';
+
+  const carOptions = useMemo<CarOptions | undefined>(() => {
+    if (transportMode !== 'car') return undefined;
+    const fuelType = (searchParams.get('fuel_type') as FuelType) || 'benzin';
+    const consumption = parseFloat(searchParams.get('consumption') || '') || 7.5;
+    const fuelPriceStr = searchParams.get('fuel_price');
+    const fuelPrice = fuelPriceStr ? parseFloat(fuelPriceStr) : undefined;
+    return {
+      fuel_type: fuelType,
+      consumption_l_per_100km: consumption,
+      fuel_price_czk_per_l: fuelPrice && !Number.isNaN(fuelPrice) ? fuelPrice : undefined,
+    };
+  }, [searchParams, transportMode]);
 
   const nights = Math.max(1, Math.ceil(
     (new Date(returnDate).getTime() - new Date(date).getTime()) / (1000 * 60 * 60 * 24),
@@ -114,7 +130,9 @@ export default function ResultsPage() {
       nights,
       passengers: 1,
       weights: debouncedWeights,
-      filters: { max_transfers: maxTransfers },
+      filters: transportMode === 'car' ? {} : { max_transfers: maxTransfers },
+      transport_mode: transportMode,
+      car_options: carOptions,
     }).then(res => {
       if (!cancelled) {
         setFetchedResults(res.data.results);
@@ -127,7 +145,7 @@ export default function ResultsPage() {
     });
 
     return () => { cancelled = true; };
-  }, [isMulti, origin?.name, destination?.name, date, returnDate, debouncedWeights, maxTransfers]);
+  }, [isMulti, origin?.name, destination?.name, date, returnDate, debouncedWeights, maxTransfers, transportMode, carOptions]);
 
   // Multi-dest: load from sessionStorage once on mount
   useEffect(() => {
@@ -208,23 +226,29 @@ export default function ResultsPage() {
         <div className="space-y-4">
           <PreferenceSliders weights={weights} onChange={setWeights} />
 
-          <div className="bg-white rounded-xl shadow p-4">
-            <h3 className="font-semibold text-gray-800 mb-3 flex items-center gap-2">
-              <SlidersHorizontal size={18} /> Filtry
-            </h3>
-            <div>
-              <label className="block text-sm text-gray-600 mb-1">Max. přestupů</label>
-              <select
-                className="w-full border border-gray-300 rounded-lg px-3 py-2"
-                value={maxTransfers}
-                onChange={(e) => { setMaxTransfers(Number(e.target.value)); setVisibleCount(10); }}
-              >
-                <option value={0}>Přímé spojení</option>
-                <option value={1}>Max. 1 přestup</option>
-                <option value={2}>Max. 2 přestupy</option>
-              </select>
+          {transportMode === 'car' ? (
+            <div className="bg-green-50 border border-green-200 rounded-xl p-4 text-sm text-green-800">
+              🚗 Cesta autem — ceny paliva se načítají z GlobalPetrolPrices.com
             </div>
-          </div>
+          ) : (
+            <div className="bg-white rounded-xl shadow p-4">
+              <h3 className="font-semibold text-gray-800 mb-3 flex items-center gap-2">
+                <SlidersHorizontal size={18} /> Filtry
+              </h3>
+              <div>
+                <label className="block text-sm text-gray-600 mb-1">Max. přestupů</label>
+                <select
+                  className="w-full border border-gray-300 rounded-lg px-3 py-2"
+                  value={maxTransfers}
+                  onChange={(e) => { setMaxTransfers(Number(e.target.value)); setVisibleCount(10); }}
+                >
+                  <option value={0}>Přímé spojení</option>
+                  <option value={1}>Max. 1 přestup</option>
+                  <option value={2}>Max. 2 přestupy</option>
+                </select>
+              </div>
+            </div>
+          )}
         </div>
 
         <div className="lg:col-span-3 space-y-4">
