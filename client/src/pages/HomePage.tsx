@@ -104,6 +104,9 @@ export default function HomePage() {
   const [consumption, setConsumption] = useState<number>(FUEL_DEFAULT_CONSUMPTION.benzin);
   const [fuelPrice, setFuelPrice] = useState<string>('');
   const [fuelSource, setFuelSource] = useState<string>('');
+  const [timeMode, setTimeMode] = useState<'depart' | 'arrive'>('depart');
+  const [outboundTime, setOutboundTime] = useState<string>('');
+  const [returnTime, setReturnTime] = useState<string>('');
 
   useEffect(() => {
     if (transportMode !== 'car') return;
@@ -149,6 +152,9 @@ export default function HomePage() {
       params.set('fuel_type', fuelType);
       params.set('consumption', String(consumption));
       if (fuelPrice) params.set('fuel_price', fuelPrice);
+      params.set('time_mode', timeMode);
+      if (outboundTime) params.set('outbound_time', outboundTime);
+      if (returnTime) params.set('return_time', returnTime);
     }
     navigate(`/vysledky?${params}`);
   };
@@ -161,6 +167,19 @@ export default function HomePage() {
     try {
       const destinations = activeTagData.places;
       let done = 0;
+      const carExtras = transportMode === 'car'
+        ? {
+            transport_mode: 'car' as const,
+            car_options: {
+              fuel_type: fuelType,
+              consumption_l_per_100km: consumption,
+              fuel_price_czk_per_l: fuelPrice ? parseFloat(fuelPrice) : undefined,
+              time_mode: timeMode,
+              outbound_time: outboundTime || undefined,
+              return_time: returnTime || undefined,
+            },
+          }
+        : {};
       const results = await Promise.allSettled(
         destinations.map(destination =>
           recommendationApi.search({
@@ -172,6 +191,7 @@ export default function HomePage() {
             passengers: 1,
             weights: { price: 0.35, travel_time: 0.25, comfort: 0.25, rating: 0.15 },
             filters: {},
+            ...carExtras,
           }).then(r => { setBestDealProgress(Math.round((++done / destinations.length) * 100)); return r; })
         )
       );
@@ -219,7 +239,31 @@ export default function HomePage() {
         return;
       }
 
-      sessionStorage.setItem('multiDestResults', JSON.stringify(allCombos.slice(0, 50)));
+      // Try storing with full geometry first; if quota is exceeded (car mode with
+      // full OSRM polylines × many accommodations can blow past 5 MB), retry with
+      // geometry stripped. Transit results typically fit and keep their polylines.
+      const stripGeometry = (combo: ScoredCombo): ScoredCombo => ({
+        ...combo,
+        outbound_route: {
+          ...combo.outbound_route,
+          segments: combo.outbound_route.segments.map(s => ({ ...s, geometry: undefined })),
+        },
+        return_route: {
+          ...combo.return_route,
+          segments: combo.return_route.segments.map(s => ({ ...s, geometry: undefined })),
+        },
+      });
+      const top50 = allCombos.slice(0, 50);
+      try {
+        sessionStorage.setItem('multiDestResults', JSON.stringify(top50));
+      } catch {
+        try {
+          sessionStorage.setItem('multiDestResults', JSON.stringify(top50.map(stripGeometry)));
+        } catch {
+          toast.error('Výsledky jsou příliš velké pro uložení. Zkuste vybrat jednu destinaci.');
+          return;
+        }
+      }
       sessionStorage.setItem('multiDestMeta', JSON.stringify({
         tagLabel: activeTagData.label,
         tagEmoji: activeTagData.emoji,
@@ -229,7 +273,24 @@ export default function HomePage() {
         nights,
       }));
 
-      navigate(`/vysledky?multi=1&origin_name=${encodeURIComponent(origin!.name)}&origin_lat=${origin!.lat}&origin_lon=${origin!.lon}&date=${date}&return_date=${returnDate}`);
+      const multiParams = new URLSearchParams({
+        multi: '1',
+        origin_name: origin!.name,
+        origin_lat: String(origin!.lat),
+        origin_lon: String(origin!.lon),
+        date,
+        return_date: returnDate,
+      });
+      if (transportMode === 'car') {
+        multiParams.set('transport_mode', 'car');
+        multiParams.set('fuel_type', fuelType);
+        multiParams.set('consumption', String(consumption));
+        if (fuelPrice) multiParams.set('fuel_price', fuelPrice);
+        multiParams.set('time_mode', timeMode);
+        if (outboundTime) multiParams.set('outbound_time', outboundTime);
+        if (returnTime) multiParams.set('return_time', returnTime);
+      }
+      navigate(`/vysledky?${multiParams}`);
     } catch {
       toast.error('Chyba při hledání.');
     } finally {
@@ -409,7 +470,7 @@ export default function HomePage() {
                         max="25"
                         value={consumption}
                         onChange={(e) => setConsumption(parseFloat(e.target.value) || 0)}
-                        className="w-full px-2 py-1 text-sm border border-gray-300 rounded focus:ring-2 focus:ring-green-500"
+                        className="w-full px-2 py-1 text-sm text-gray-900 border border-gray-300 rounded focus:ring-2 focus:ring-green-500"
                       />
                     </div>
                     <div>
@@ -421,7 +482,7 @@ export default function HomePage() {
                         placeholder="Načítám..."
                         value={fuelPrice}
                         onChange={(e) => setFuelPrice(e.target.value)}
-                        className="w-full px-2 py-1 text-sm border border-gray-300 rounded focus:ring-2 focus:ring-green-500"
+                        className="w-full px-2 py-1 text-sm text-gray-900 border border-gray-300 rounded focus:ring-2 focus:ring-green-500"
                       />
                     </div>
                   </div>
@@ -429,6 +490,58 @@ export default function HomePage() {
                   {fuelSource && (
                     <div className="text-xs text-gray-500">⛽ {fuelSource}</div>
                   )}
+
+                  <div className="pt-2 border-t border-green-200">
+                    <label className="block text-xs font-medium text-gray-700 mb-1">Čas cesty</label>
+                    <div className="flex gap-1.5 mb-2">
+                      <button
+                        type="button"
+                        onClick={() => setTimeMode('depart')}
+                        className={`flex-1 px-2 py-1 text-xs rounded border font-medium ${
+                          timeMode === 'depart'
+                            ? 'border-green-600 bg-white text-green-700'
+                            : 'border-gray-300 bg-white text-gray-600 hover:border-gray-400'
+                        }`}
+                      >
+                        Chci vyrazit v…
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setTimeMode('arrive')}
+                        className={`flex-1 px-2 py-1 text-xs rounded border font-medium ${
+                          timeMode === 'arrive'
+                            ? 'border-green-600 bg-white text-green-700'
+                            : 'border-gray-300 bg-white text-gray-600 hover:border-gray-400'
+                        }`}
+                      >
+                        Chci být na místě v…
+                      </button>
+                    </div>
+                    <div className="grid grid-cols-2 gap-2">
+                      <div>
+                        <label className="block text-[11px] text-gray-600 mb-0.5">
+                          Tam — {timeMode === 'depart' ? 'odjezd' : 'příjezd'}
+                        </label>
+                        <input
+                          type="time"
+                          value={outboundTime}
+                          onChange={(e) => setOutboundTime(e.target.value)}
+                          className="w-full px-2 py-1 text-sm text-gray-900 border border-gray-300 rounded focus:ring-2 focus:ring-green-500"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-[11px] text-gray-600 mb-0.5">
+                          Zpět — {timeMode === 'depart' ? 'odjezd' : 'příjezd'}
+                        </label>
+                        <input
+                          type="time"
+                          value={returnTime}
+                          onChange={(e) => setReturnTime(e.target.value)}
+                          className="w-full px-2 py-1 text-sm text-gray-900 border border-gray-300 rounded focus:ring-2 focus:ring-green-500"
+                        />
+                      </div>
+                    </div>
+                  </div>
                 </div>
               )}
             </div>

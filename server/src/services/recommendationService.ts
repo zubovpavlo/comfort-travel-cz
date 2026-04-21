@@ -40,8 +40,8 @@ export const recommendationService = {
     if (request.transport_mode === 'car') {
       if (!request.car_options) return [];
       const [out, ret] = await Promise.all([
-        carRouteService.getRoute(request.origin, request.destination, request.car_options),
-        carRouteService.getRoute(request.destination, request.origin, request.car_options),
+        carRouteService.getRoute(request.origin, request.destination, request.car_options, request.car_options.outbound_time),
+        carRouteService.getRoute(request.destination, request.origin, request.car_options, request.car_options.return_time),
       ]);
       if (!out || !ret) return [];
       filteredOut = [out];

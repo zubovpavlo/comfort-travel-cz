@@ -21,6 +21,9 @@ export interface Order {
   status: 'confirmed' | 'cancelled';
   payment_ref: string | null;
   route_snapshot: Record<string, unknown> | null;
+  rating: number | null;
+  review_text: string | null;
+  reviewed_at: string | null;
   created_at: string;
 }
 
@@ -42,6 +45,11 @@ export const orderApi = {
 
   cancel: async (id: number): Promise<{ order: Order }> => {
     const { data } = await api.patch(`/orders/${id}/cancel`);
+    return data;
+  },
+
+  review: async (id: number, rating: number, reviewText: string | null): Promise<{ order: Order }> => {
+    const { data } = await api.post(`/orders/${id}/review`, { rating, review_text: reviewText });
     return data;
   },
 };

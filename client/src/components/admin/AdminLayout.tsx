@@ -1,10 +1,11 @@
 import { Link, useLocation, Navigate } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
-import { LayoutDashboard, Users } from 'lucide-react';
+import { LayoutDashboard, Users, Database } from 'lucide-react';
 
 const navItems = [
   { to: '/admin', icon: LayoutDashboard, label: 'Přehled', exact: true },
   { to: '/admin/uzivatele', icon: Users, label: 'Uživatelé' },
+  { to: '/admin/databaze', icon: Database, label: 'Databáze' },
 ];
 
 export default function AdminLayout({ children }: { children: React.ReactNode }) {

@@ -59,4 +59,16 @@ export const orderModel = {
     const [{ count }] = await db('orders').count('id as count');
     return Number(count);
   },
+
+  async addReview(id: number, userId: number, rating: number, reviewText: string | null): Promise<Order | undefined> {
+    const [order] = await db('orders')
+      .where({ id, user_id: userId })
+      .update({
+        rating,
+        review_text: reviewText,
+        reviewed_at: db.fn.now(),
+      })
+      .returning('*');
+    return order;
+  },
 };

@@ -59,7 +59,7 @@ export default function PaymentModal({ totalPrice, onConfirm, onSuccess, onClose
 
   if (success) {
     return (
-      <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+      <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/50 p-4">
         <div className="bg-white rounded-2xl shadow-xl w-full max-w-md p-8 text-center">
           <CheckCircle className="mx-auto text-green-500 mb-4" size={64} />
           <h2 className="text-2xl font-bold text-gray-900 mb-2">Objednávka potvrzena!</h2>
@@ -77,7 +77,7 @@ export default function PaymentModal({ totalPrice, onConfirm, onSuccess, onClose
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+    <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/50 p-4">
       <div className="bg-white rounded-2xl shadow-xl w-full max-w-md">
         {/* Header */}
         <div className="flex items-center justify-between p-6 border-b">

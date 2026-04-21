@@ -22,7 +22,10 @@ interface OsrmResponse {
 }
 
 async function fetchOsrm(origin: Place, dest: Place): Promise<OsrmRoute | null> {
-  const url = `${OSRM_BASE}/route/v1/driving/${origin.lon},${origin.lat};${dest.lon},${dest.lat}?overview=full&geometries=geojson`;
+  // `overview=simplified` applies Douglas-Peucker on the server side, reducing
+  // polyline size by ~10× while preserving the visual shape — full geometry can
+  // easily push sessionStorage past its 5 MB quota in multi-destination searches.
+  const url = `${OSRM_BASE}/route/v1/driving/${origin.lon},${origin.lat};${dest.lon},${dest.lat}?overview=simplified&geometries=geojson`;
   const controller = new AbortController();
   const id = setTimeout(() => controller.abort(), 20000);
   try {
@@ -42,9 +45,27 @@ async function fetchOsrm(origin: Place, dest: Place): Promise<OsrmRoute | null> 
 }
 
 function formatTime(minutesFromMidnight: number): string {
-  const h = Math.floor(minutesFromMidnight / 60) % 24;
-  const m = minutesFromMidnight % 60;
+  const h = Math.floor(((minutesFromMidnight % 1440) + 1440) % 1440 / 60);
+  const m = ((minutesFromMidnight % 60) + 60) % 60;
   return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`;
+}
+
+function parseHHMM(s: string | undefined): number | null {
+  if (!s) return null;
+  const m = /^(\d{1,2}):(\d{2})$/.exec(s.trim());
+  if (!m) return null;
+  const h = Number(m[1]);
+  const mm = Number(m[2]);
+  if (h < 0 || h > 23 || mm < 0 || mm > 59) return null;
+  return h * 60 + mm;
+}
+
+// Returns [departureMinutes, arrivalMinutes] given a user-specified reference time and mode.
+function scheduleTimes(durationMin: number, refMinutes: number | null, mode: 'depart' | 'arrive' | undefined): [number, number] {
+  const defaultDepart = 8 * 60; // 08:00 placeholder when no time specified
+  if (refMinutes === null) return [defaultDepart, defaultDepart + durationMin];
+  if (mode === 'arrive') return [refMinutes - durationMin, refMinutes];
+  return [refMinutes, refMinutes + durationMin];
 }
 
 // Resolve fuel price: manual override → live scrape → fallback heuristic
@@ -63,7 +84,7 @@ async function resolveFuelPrice(opts: CarOptions): Promise<{ price: number; sour
 }
 
 export const carRouteService = {
-  async getRoute(origin: Place, dest: Place, opts: CarOptions): Promise<Route | null> {
+  async getRoute(origin: Place, dest: Place, opts: CarOptions, refTime?: string): Promise<Route | null> {
     const osrm = await fetchOsrm(origin, dest);
     if (!osrm) return null;
 
@@ -79,6 +100,8 @@ export const carRouteService = {
       ([lon, lat]) => [lat, lon],
     );
 
+    const [depMin, arrMin] = scheduleTimes(durationMin, parseHHMM(refTime), opts.time_mode);
+
     const segment: RouteSegment = {
       originStopName: origin.name,
       originLat: origin.lat,
@@ -87,8 +110,8 @@ export const carRouteService = {
       destLat: dest.lat,
       destLon: dest.lon,
       transportType: 'car',
-      departureTime: formatTime(8 * 60), // 08:00 — placeholder, car departure is arbitrary
-      arrivalTime: formatTime(8 * 60 + durationMin),
+      departureTime: formatTime(depMin),
+      arrivalTime: formatTime(arrMin),
       durationMinutes: durationMin,
       priceCzk: costCzk,
       carrierName: null,

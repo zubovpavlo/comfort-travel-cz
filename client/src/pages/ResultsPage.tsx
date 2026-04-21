@@ -59,10 +59,16 @@ export default function ResultsPage() {
     const consumption = parseFloat(searchParams.get('consumption') || '') || 7.5;
     const fuelPriceStr = searchParams.get('fuel_price');
     const fuelPrice = fuelPriceStr ? parseFloat(fuelPriceStr) : undefined;
+    const timeMode = searchParams.get('time_mode') === 'arrive' ? 'arrive' : 'depart';
+    const outboundTime = searchParams.get('outbound_time') || undefined;
+    const returnTime = searchParams.get('return_time') || undefined;
     return {
       fuel_type: fuelType,
       consumption_l_per_100km: consumption,
       fuel_price_czk_per_l: fuelPrice && !Number.isNaN(fuelPrice) ? fuelPrice : undefined,
+      time_mode: timeMode,
+      outbound_time: outboundTime,
+      return_time: returnTime,
     };
   }, [searchParams, transportMode]);
 

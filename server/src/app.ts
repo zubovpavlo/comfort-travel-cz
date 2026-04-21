@@ -19,7 +19,9 @@ const app = express();
 app.use(helmet());
 app.use(cors({ origin: env.corsOrigins, credentials: true }));
 app.use(morgan('dev'));
-app.use(express.json());
+// Combo snapshots with OSRM geometry for long car routes can exceed
+// the default 100 kB limit — bump to 5 MB to match the client-side cap.
+app.use(express.json({ limit: '5mb' }));
 
 app.use('/api/auth', authRoutes);
 app.use('/api/geo', geoRoutes);

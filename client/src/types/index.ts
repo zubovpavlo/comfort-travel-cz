@@ -26,6 +26,9 @@ export interface CarOptions {
   fuel_type: FuelType;
   consumption_l_per_100km: number;
   fuel_price_czk_per_l?: number;
+  time_mode?: 'depart' | 'arrive';
+  outbound_time?: string; // HH:MM
+  return_time?: string;   // HH:MM
 }
 
 export interface FuelPrices {

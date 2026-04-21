@@ -15,6 +15,7 @@ import TripDetailPage from './pages/TripDetailPage';
 import AccommodationDetailPage from './pages/AccommodationDetailPage';
 import AdminDashboardPage from './pages/admin/AdminDashboardPage';
 import AdminUsersPage from './pages/admin/AdminUsersPage';
+import AdminDatabasePage from './pages/admin/AdminDatabasePage';
 
 const queryClient = new QueryClient();
 
@@ -55,6 +56,7 @@ function AppRoutes() {
           {/* Admin-only routes */}
           <Route path="/admin" element={<AdminRoute><AdminDashboardPage /></AdminRoute>} />
           <Route path="/admin/uzivatele" element={<AdminRoute><AdminUsersPage /></AdminRoute>} />
+          <Route path="/admin/databaze" element={<AdminRoute><AdminDatabasePage /></AdminRoute>} />
 
           {/* Fallback */}
           <Route path="*" element={<Navigate to="/" replace />} />

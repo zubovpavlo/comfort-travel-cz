@@ -29,6 +29,9 @@ export interface CarOptions {
   fuel_type: FuelType;
   consumption_l_per_100km: number;
   fuel_price_czk_per_l?: number;
+  time_mode?: 'depart' | 'arrive';
+  outbound_time?: string; // HH:MM — reference time on outbound date
+  return_time?: string;   // HH:MM — reference time on return date
 }
 
 export interface TransportConnectionCache {
@@ -178,6 +181,9 @@ export interface Order {
   status: 'confirmed' | 'cancelled';
   payment_ref: string | null;
   route_snapshot: Record<string, unknown> | null;
+  rating: number | null;
+  review_text: string | null;
+  reviewed_at: Date | null;
   created_at: Date;
 }
 
